@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Live Notifications – Server Push</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem; }
+    .back { align-self: flex-start; color: #38bdf8; text-decoration: none; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back:hover { text-decoration: underline; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+    .subtitle { color: #64748b; margin-bottom: 2rem; font-size: 0.9rem; }
+    .container { width: 100%; max-width: 700px; }
+    .status-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; font-size: 0.85rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #475569; }
+    .dot.connected { background: #22c55e; }
+    .trigger-section { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .trigger-section h3 { margin-bottom: 1rem; font-size: 1rem; color: #94a3b8; }
+    .trigger-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .trigger-btns button { padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+    .btn-info    { background: #1d4ed8; color: #bfdbfe; }
+    .btn-success { background: #15803d; color: #bbf7d0; }
+    .btn-warning { background: #b45309; color: #fde68a; }
+    .btn-error   { background: #b91c1c; color: #fecaca; }
+    .custom-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .custom-form input { flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; color: #e2e8f0; font-size: 0.85rem; outline: none; }
+    .custom-form select { padding: 0.5rem 0.75rem; background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; color: #e2e8f0; font-size: 0.85rem; }
+    .custom-form button { padding: 0.5rem 1rem; background: linear-gradient(135deg, #38bdf8, #818cf8); color: #0f172a; border: none; border-radius: 0.5rem; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
+    .feed { display: flex; flex-direction: column; gap: 0.6rem; }
+    .notification { border-radius: 0.6rem; padding: 0.8rem 1rem; display: flex; flex-direction: column; gap: 0.2rem; animation: slideIn 0.3s ease; border-left: 4px solid; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    .notification.info    { background: #172554; border-color: #3b82f6; }
+    .notification.success { background: #052e16; border-color: #22c55e; }
+    .notification.warning { background: #1c1917; border-color: #f59e0b; }
+    .notification.error   { background: #1f0f0f; border-color: #ef4444; }
+    .notification .title { font-weight: 700; font-size: 0.9rem; }
+    .notification .body  { font-size: 0.85rem; color: #cbd5e1; }
+    .notification .time  { font-size: 0.75rem; color: #64748b; }
+    .empty { color: #334155; text-align: center; padding: 2rem; font-size: 0.9rem; }
+    code { background: #1e293b; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <a class="back" href="/websocket">← Back to examples</a>
+  <h1>Live Notifications</h1>
+  <p class="subtitle">Server-push via STOMP — subscribes to <code>/topic/notifications</code></p>
+
+  <div class="container">
+    <div class="status-bar">
+      <div class="dot" id="dot"></div>
+      <span id="statusText">Connecting…</span>
+    </div>
+
+    <div class="trigger-section">
+      <h3>Trigger a notification (calls the REST API on your behalf)</h3>
+      <div class="trigger-btns">
+        <button class="btn-info"    onclick="triggerDemo('info')">Info</button>
+        <button class="btn-success" onclick="triggerDemo('success')">Success</button>
+        <button class="btn-warning" onclick="triggerDemo('warning')">Warning</button>
+        <button class="btn-error"   onclick="triggerDemo('error')">Error</button>
+      </div>
+      <div class="custom-form">
+        <input type="text" id="nTitle" placeholder="Title"/>
+        <input type="text" id="nBody"  placeholder="Message body"/>
+        <select id="nLevel">
+          <option value="info">info</option>
+          <option value="success">success</option>
+          <option value="warning">warning</option>
+          <option value="error">error</option>
+        </select>
+        <button onclick="sendCustom()">Send custom</button>
+      </div>
+    </div>
+
+    <div class="feed" id="feed">
+      <div class="empty" id="emptyHint">No notifications yet — trigger one above!</div>
+    </div>
+  </div>
+
+  <script>
+    const stompClient = new StompJs.Client({
+      webSocketFactory: () => new SockJS('/ws-stomp'),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        document.getElementById('dot').className = 'dot connected';
+        document.getElementById('statusText').textContent = 'Connected — waiting for notifications…';
+        stompClient.subscribe('/topic/notifications', frame => {
+          const n = JSON.parse(frame.body);
+          showNotification(n);
+        });
+      },
+      onDisconnect: () => {
+        document.getElementById('dot').className = 'dot';
+        document.getElementById('statusText').textContent = 'Disconnected';
+      }
+    });
+    stompClient.activate();
+
+    function showNotification(n) {
+      document.getElementById('emptyHint')?.remove();
+      const feed = document.getElementById('feed');
+      const el = document.createElement('div');
+      el.className = 'notification ' + (n.level || 'info');
+      const ts = n.timestamp ? new Date(n.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+      el.innerHTML = '<span class="title">' + escHtml(n.title) + '</span>'
+                   + '<span class="body">'  + escHtml(n.body)  + '</span>'
+                   + '<span class="time">'  + ts               + '</span>';
+      feed.prepend(el);
+    }
+
+    function triggerDemo(level) {
+      fetch('/api/notifications/demo/' + level).catch(console.error);
+    }
+
+    function sendCustom() {
+      const title = document.getElementById('nTitle').value.trim() || 'Custom notification';
+      const body  = document.getElementById('nBody').value.trim()  || 'No body';
+      const level = document.getElementById('nLevel').value;
+      fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body, level })
+      }).catch(console.error);
+    }
+
+    function escHtml(s) {
+      return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

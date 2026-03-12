@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Echo – Raw WebSocket</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem; }
+    .back { align-self: flex-start; color: #38bdf8; text-decoration: none; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .back:hover { text-decoration: underline; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+    .subtitle { color: #64748b; margin-bottom: 2rem; font-size: 0.9rem; }
+    .container { width: 100%; max-width: 700px; }
+    .status-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; font-size: 0.85rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #475569; }
+    .dot.connected { background: #22c55e; }
+    .dot.error { background: #ef4444; }
+    .log { background: #0d1b2e; border: 1px solid #1e3a5f; border-radius: 0.75rem; padding: 1rem; height: 340px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.82rem; margin-bottom: 1rem; }
+    .log .entry { padding: 2px 0; line-height: 1.6; }
+    .log .entry.server { color: #38bdf8; }
+    .log .entry.sent { color: #a78bfa; }
+    .log .entry.broadcast { color: #94a3b8; }
+    .log .entry.system { color: #64748b; font-style: italic; }
+    .controls { display: flex; gap: 0.5rem; }
+    input[type=text] { flex: 1; padding: 0.65rem 1rem; background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; color: #e2e8f0; font-size: 0.95rem; outline: none; }
+    input[type=text]:focus { border-color: #38bdf8; }
+    button { padding: 0.65rem 1.2rem; border: none; border-radius: 0.5rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    #btnConnect { background: #22c55e; color: #fff; }
+    #btnDisconnect { background: #ef4444; color: #fff; }
+    #btnSend { background: linear-gradient(135deg, #38bdf8, #818cf8); color: #0f172a; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    .row { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+  </style>
+</head>
+<body>
+  <a class="back" href="/websocket">← Back to examples</a>
+  <h1>Echo &amp; Broadcast</h1>
+  <p class="subtitle">Raw WebSocket — connects to <code>/ws/echo</code></p>
+
+  <div class="container">
+    <div class="status-bar">
+      <div class="dot" id="dot"></div>
+      <span id="statusText">Disconnected</span>
+    </div>
+
+    <div class="row">
+      <button id="btnConnect" onclick="connect()">Connect</button>
+      <button id="btnDisconnect" onclick="disconnect()" disabled>Disconnect</button>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <div class="controls">
+      <input type="text" id="msgInput" placeholder="Type a message…" onkeydown="if(event.key==='Enter') send()"/>
+      <button id="btnSend" onclick="send()" disabled>Send</button>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+
+    function log(text, cls) {
+      const box = document.getElementById('log');
+      const el = document.createElement('div');
+      el.className = 'entry ' + (cls || '');
+      el.textContent = '[' + new Date().toLocaleTimeString() + '] ' + text;
+      box.appendChild(el);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function setConnected(connected) {
+      document.getElementById('dot').className = 'dot ' + (connected ? 'connected' : '');
+      document.getElementById('statusText').textContent = connected ? 'Connected' : 'Disconnected';
+      document.getElementById('btnConnect').disabled = connected;
+      document.getElementById('btnDisconnect').disabled = !connected;
+      document.getElementById('btnSend').disabled = !connected;
+    }
+
+    function connect() {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(proto + '://' + location.host + '/ws/echo');
+
+      ws.onopen = () => { setConnected(true); log('Connection established.', 'system'); };
+      ws.onmessage = e => {
+        const text = e.data;
+        if (text.startsWith('[Echo]')) log(text, 'server');
+        else if (text.startsWith('[Client')) log(text, 'broadcast');
+        else log(text, 'server');
+      };
+      ws.onclose = () => { setConnected(false); log('Connection closed.', 'system'); };
+      ws.onerror = () => {
+        document.getElementById('dot').className = 'dot error';
+        document.getElementById('statusText').textContent = 'Error';
+        log('WebSocket error occurred.', 'system');
+      };
+    }
+
+    function disconnect() {
+      if (ws) ws.close();
+    }
+
+    function send() {
+      const input = document.getElementById('msgInput');
+      const msg = input.value.trim();
+      if (!msg || !ws) return;
+      ws.send(msg);
+      log('You: ' + msg, 'sent');
+      input.value = '';
+    }
+  </script>
+</body>
+</html>
