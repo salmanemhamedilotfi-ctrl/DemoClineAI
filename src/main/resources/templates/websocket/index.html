@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>WebSocket Examples</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; }
+    h1 { font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    p.subtitle { color: #94a3b8; margin-bottom: 3rem; font-size: 1.1rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; width: 100%; max-width: 960px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; padding: 2rem; transition: transform .2s, border-color .2s; }
+    .card:hover { transform: translateY(-4px); border-color: #38bdf8; }
+    .card .icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .card h2 { font-size: 1.3rem; margin-bottom: 0.5rem; color: #f1f5f9; }
+    .card p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.6; }
+    .badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
+    .badge-raw { background: #1d4ed8; color: #bfdbfe; }
+    .badge-stomp { background: #7c3aed; color: #ddd6fe; }
+    .badge-push { background: #059669; color: #a7f3d0; }
+    a.btn { display: inline-block; text-decoration: none; background: linear-gradient(135deg, #38bdf8, #818cf8); color: #0f172a; font-weight: 700; padding: 0.6rem 1.4rem; border-radius: 0.5rem; font-size: 0.9rem; }
+    a.btn:hover { opacity: 0.88; }
+  </style>
+</head>
+<body>
+  <h1>WebSocket Examples</h1>
+  <p class="subtitle">Interactive demos built with Spring Boot &amp; native browser WebSocket API</p>
+  <div class="cards">
+    <div class="card">
+      <div class="icon">🔁</div>
+      <span class="badge badge-raw">Raw WebSocket</span>
+      <h2>Echo &amp; Broadcast</h2>
+      <p>Connect directly via the native WebSocket API. Every message is echoed back to you and broadcast to all other open tabs.</p>
+      <a class="btn" href="/websocket/echo">Open Demo</a>
+    </div>
+    <div class="card">
+      <div class="icon">💬</div>
+      <span class="badge badge-stomp">STOMP / SockJS</span>
+      <h2>Chat Room</h2>
+      <p>A multi-user chat room powered by STOMP over SockJS. Open multiple tabs to simulate different users chatting in real-time.</p>
+      <a class="btn" href="/websocket/chat">Open Demo</a>
+    </div>
+    <div class="card">
+      <div class="icon">🔔</div>
+      <span class="badge badge-push">Server Push</span>
+      <h2>Live Notifications</h2>
+      <p>Server broadcasts notifications to all subscribers. Trigger them via the REST API or the buttons on the demo page.</p>
+      <a class="btn" href="/websocket/notifications">Open Demo</a>
+    </div>
+  </div>
+</body>
+</html>
