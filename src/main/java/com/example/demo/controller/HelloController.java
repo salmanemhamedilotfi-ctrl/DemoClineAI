@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
-@Tag(name = "Hello API", description = "API for hello world and palindrome operations")
+@Tag(name = "Hello API", description = "API for hello world, palindrome, and text reversal operations")
 public class HelloController {
 
     @Operation(
@@ -62,6 +62,71 @@ public class HelloController {
     public PalindromeResult checkPalindromeGet(@RequestParam String text) {
         boolean isPalindrome = isPalindrome(text);
         return new PalindromeResult(text, isPalindrome);
+    }
+
+    @Operation(
+        summary = "Reverse text (POST)",
+        description = "Returns the reversed version of the provided text",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Text to reverse",
+            required = true,
+            content = @Content(schema = @Schema(type = "string"))
+        ),
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Successful operation")
+        }
+    )
+    @PostMapping("/reverse")
+    public ReverseResult reverseTextPost(@RequestBody String text) {
+        return new ReverseResult(text, reverseText(text));
+    }
+
+    @Operation(
+        summary = "Reverse text (GET)",
+        description = "Returns the reversed version of the provided text using query parameter",
+        parameters = {
+            @Parameter(name = "text", description = "Text to reverse", required = true)
+        },
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Successful operation")
+        }
+    )
+    @GetMapping("/reverse")
+    public ReverseResult reverseTextGet(@RequestParam String text) {
+        return new ReverseResult(text, reverseText(text));
+    }
+
+    public String reverseText(String text) {
+        if (text == null) {
+            return null;
+        }
+        return new StringBuilder(text).reverse().toString();
+    }
+
+    public static class ReverseResult {
+        private String original;
+        private String reversed;
+
+        public ReverseResult(String original, String reversed) {
+            this.original = original;
+            this.reversed = reversed;
+        }
+
+        public String getOriginal() {
+            return original;
+        }
+
+        public void setOriginal(String original) {
+            this.original = original;
+        }
+
+        public String getReversed() {
+            return reversed;
+        }
+
+        public void setReversed(String reversed) {
+            this.reversed = reversed;
+        }
     }
 
     public boolean isPalindrome(String text) {
