@@ -159,4 +159,73 @@ public class HelloControllerTest {
                 assertTrue(result.isPalindrome());
             });
     }
+
+    @Test
+    public void testReversePost() {
+        webTestClient.post()
+            .uri("/api/reverse")
+            .bodyValue("hello")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(HelloController.ReverseResult.class)
+            .value(result -> {
+                assertEquals("hello", result.getOriginal());
+                assertEquals("olleh", result.getReversed());
+            });
+    }
+
+    @Test
+    public void testReverseGet() {
+        webTestClient.get()
+            .uri("/api/reverse?text=world")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(HelloController.ReverseResult.class)
+            .value(result -> {
+                assertEquals("world", result.getOriginal());
+                assertEquals("dlrow", result.getReversed());
+            });
+    }
+
+    @Test
+    public void testReversePostWithSpaces() {
+        webTestClient.post()
+            .uri("/api/reverse")
+            .bodyValue("Hello World")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(HelloController.ReverseResult.class)
+            .value(result -> {
+                assertEquals("Hello World", result.getOriginal());
+                assertEquals("dlroW olleH", result.getReversed());
+            });
+    }
+
+    @Test
+    public void testReversePostEmptyString() {
+        webTestClient.post()
+            .uri("/api/reverse")
+            .bodyValue("")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(HelloController.ReverseResult.class)
+            .value(result -> {
+                assertEquals("", result.getOriginal());
+                assertEquals("", result.getReversed());
+            });
+    }
+
+    @Test
+    public void testReversePostSingleCharacter() {
+        webTestClient.post()
+            .uri("/api/reverse")
+            .bodyValue("a")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(HelloController.ReverseResult.class)
+            .value(result -> {
+                assertEquals("a", result.getOriginal());
+                assertEquals("a", result.getReversed());
+            });
+    }
 }
